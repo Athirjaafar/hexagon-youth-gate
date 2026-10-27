@@ -104,7 +104,10 @@
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
       video.srcObject = stream; await video.play(); scanning = true; tick();
       show('', 'وجّه الكاميرا إلى رمز QR على بطاقة المشارك', '', '');
-    } catch (e) { show('bad', 'تعذّر فتح الكاميرا', '', 'اسمح للمتصفح باستخدام الكاميرا (إعدادات الموقع)، أو استخدم البحث اليدوي'); }
+    } catch (e) {
+      const why = !navigator.mediaDevices ? 'المتصفح لا يدعم الكاميرا هنا' : e && e.name === 'NotAllowedError' ? 'الإذن مرفوض: افتح إعدادات الموقع في المتصفح واسمح بالكاميرا' : e && e.name === 'NotFoundError' ? 'لم يُعثر على كاميرا' : (e && (e.name + ': ' + e.message)) || 'خطأ غير معروف';
+      show('bad', 'تعذّر فتح الكاميرا', '', why + ' · أو استخدم البحث اليدوي');
+    }
   }
   function onCode(text) {
     const m = /[?&](?:id|c)=([A-Za-z0-9]+)/.exec(text); const id = m ? m[1] : text.trim();
