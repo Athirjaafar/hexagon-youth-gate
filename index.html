@@ -97,7 +97,13 @@
   // Camera + QR decoding (BarcodeDetector where available, jsQR elsewhere)
   let stream, lastCode = '', lastAt = 0, scanning = false;
   const video = $('v'), canvas = $('c'), ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const detector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+  // Use the browser's own detector only when it really supports QR (iOS Safari exposes the class but may decode nothing);
+  // otherwise, or after any error, decode frames with jsQR.
+  let detector = null, detectorFails = 0;
+  if ('BarcodeDetector' in window && BarcodeDetector.getSupportedFormats) {
+    BarcodeDetector.getSupportedFormats().then(f => { if (f && f.includes('qr_code')) detector = new BarcodeDetector({ formats: ['qr_code'] }); }).catch(() => {});
+  }
+  let frames = 0;
   async function startCam() {
     try {
       if (stream) stream.getTracks().forEach(t => t.stop());
@@ -116,11 +122,25 @@
   }
   async function tick() {
     if (!scanning) return;
-    if (video.readyState >= 2) {
-      if (detector) { try { const codes = await detector.detect(video); if (codes.length) onCode(codes[0].rawValue); } catch (e) {} }
-      else { canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0); const img = ctx.getImageData(0, 0, canvas.width, canvas.height); const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' }); if (code && code.data) onCode(code.data); }
+    if (video.readyState >= 2 && video.videoWidth) {
+      frames++;
+      let done = false;
+      if (detector) {
+        try { const codes = await detector.detect(video); done = true; if (codes.length) onCode(codes[0].rawValue); }
+        catch (e) { if (++detectorFails > 3) detector = null; }
+      }
+      if (!done && window.jsQR) {
+        // Scale frames down to ~640px wide: faster, and enough for a QR filling the guide frame
+        const s = Math.min(1, 640 / video.videoWidth);
+        canvas.width = Math.round(video.videoWidth * s); canvas.height = Math.round(video.videoHeight * s);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+        if (code && code.data) onCode(code.data);
+      }
+      if (frames % 10 === 0 && $('res').className === 'res') $('res').querySelector('.sub').textContent = 'جارٍ المسح… ضع رمز QR داخل الإطار' + (frames % 20 ? '' : ' ·');
     }
-    setTimeout(tick, detector ? 250 : 120);
+    setTimeout(tick, 150);
   }
 
   async function search() {
