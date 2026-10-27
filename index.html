@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>بوابة الدخول – سداسية الشباب</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<style>
+  :root{--ink:#142640;--muted:#5b6b84;--line:#d9dfe9;--ok:#1f8a4c;--warn:#c77700;--bad:#b3261e}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0b1424;color:#fff;font-family:"Tajawal",Tahoma,Arial,sans-serif;font-size:16px;line-height:1.5}
+  .wrap{max-width:520px;margin:0 auto;padding:12px 14px 30px;display:grid;gap:12px}
+  h1{margin:0;font-size:1.2rem;font-weight:900;display:flex;justify-content:space-between;align-items:center}
+  h1 small{font-weight:500;color:#9aa9c2;font-size:.85rem}
+  .video{position:relative;border-radius:16px;overflow:hidden;background:#000;aspect-ratio:1/1}
+  video{width:100%;height:100%;object-fit:cover;display:block}
+  .frame{position:absolute;inset:14%;border:3px solid rgba(255,255,255,.8);border-radius:18px;pointer-events:none}
+  .res{border-radius:16px;padding:16px;display:grid;gap:4px;text-align:center;min-height:120px;background:#121e33}
+  .res.ok{background:var(--ok)} .res.again{background:var(--warn)} .res.bad{background:var(--bad)}
+  .res .big{font-size:1.6rem;font-weight:900}
+  .res .name{font-size:1.5rem;font-weight:800}
+  .res .sub{opacity:.9}
+  input,button{font:inherit}
+  input{width:100%;border:1px solid #2a3b5c;background:#121e33;color:#fff;border-radius:12px;padding:12px 14px;font-size:1.05rem}
+  .row{display:grid;grid-template-columns:1fr auto;gap:8px}
+  button{border:0;border-radius:12px;padding:12px 16px;font-weight:800;background:#fff;color:var(--ink);cursor:pointer}
+  button.ghost{background:transparent;color:#fff;border:1px solid #2a3b5c}
+  .list{display:grid;gap:6px}
+  .item{display:flex;justify-content:space-between;align-items:center;background:#121e33;border-radius:12px;padding:10px 12px;gap:8px}
+  .item .meta{font-size:.85rem;color:#9aa9c2}
+  .item button{padding:8px 12px}
+  .hidden{display:none !important}
+  .pin{display:grid;gap:10px;padding:20px 0}
+  .foot{color:#9aa9c2;font-size:.8rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>بوابة الدخول <small id="stats"></small></h1>
+
+  <section class="pin" id="pinBox">
+    <p style="margin:0">أدخل رمز الموظفين للبدء.</p>
+    <input type="password" id="pin" inputmode="numeric" placeholder="الرمز">
+    <button id="pinBtn">دخول</button>
+  </section>
+
+  <div id="app" class="hidden" style="display:grid;gap:12px">
+    <div class="video"><video id="v" playsinline muted autoplay></video><div class="frame"></div></div>
+    <div class="res" id="res"><div class="sub">وجّه الكاميرا إلى رمز QR على بطاقة المشارك</div></div>
+    <div class="row">
+      <input id="q" placeholder="بحث بالاسم أو رقم الهاتف أو رقم البطاقة">
+      <button id="qBtn">بحث</button>
+    </div>
+    <div class="list" id="list"></div>
+    <button class="ghost" id="camBtn">إعادة تشغيل الكاميرا</button>
+  </div>
+  <p class="foot">سداسية الشباب · فندق الرشيد، قاعة الزوراء · ٦ – ٧ تشرين الثاني ٢٠٢٦</p>
+</div>
+<canvas id="c" hidden></canvas>
+<script>
+(() => {
+  // The Apps Script web app that owns the Registrations sheet. Same link as the registration page.
+  const API = 'https://script.google.com/macros/s/AKfycbw9dTfm6mjmZtgxtxWO40dBxYitRlhi_AfO31cbqCAAYOt6RBCeG1sV2Djl2jZHl-sb4A/exec';
+  const $ = id => document.getElementById(id);
+  async function call(action, params) {
+    const u = new URL(API); u.searchParams.set('p', 'api'); u.searchParams.set('action', action);
+    for (const k in params) u.searchParams.set(k, params[k]);
+    u.searchParams.set('_', Date.now());
+    const r = await fetch(u, { redirect: 'follow' });
+    return r.json();
+  }
+  let pin = localStorage.getItem('hy_pin') || '';
+  const show = (cls, big, name, sub) => { const r = $('res'); r.className = 'res ' + cls; r.innerHTML = `<div class="big">${big}</div>${name ? `<div class="name">${name}</div>` : ''}<div class="sub">${sub || ''}</div>`; };
+  const beep = ok => { try { const a = new (window.AudioContext || window.webkitAudioContext)(); const o = a.createOscillator(); const g = a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value = ok ? 880 : 220; g.gain.value = .15; o.start(); o.stop(a.currentTime + (ok ? .15 : .4)); } catch (e) {} };
+
+  async function doCheck(id) {
+    show('', 'جارٍ التحقق…', '', id);
+    let r; try { r = await call('checkin', { id, pin }); } catch (e) { show('bad', 'لا يوجد اتصال', '', 'تحقق من الإنترنت وأعد المحاولة'); return; }
+    if (r.status === 'pin') { askPin(); return; }
+    if (r.status === 'ok') { beep(true); show('ok', 'أهلاً وسهلاً', r.name, `${r.platform} · رقم ${r.n} · ${r.time}`); }
+    else if (r.status === 'again') { beep(false); show('again', 'سبق دخوله', r.name, `دخل الساعة ${r.time} · رقم ${r.n}`); }
+    else { beep(false); show('bad', 'بطاقة غير معروفة', '', id); }
+    refreshStats();
+  }
+  async function refreshStats() {
+    let s; try { s = await call('stats', { pin }); } catch (e) { return; }
+    if (s.status === 'ok') $('stats').textContent = `دخل ${s.checked} من ${s.total}`; else if (s.status === 'pin') askPin();
+  }
+  function askPin() {
+    pin = ''; localStorage.removeItem('hy_pin'); scanning = false;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    $('app').classList.add('hidden'); $('pinBox').classList.remove('hidden'); $('pin').value = ''; $('stats').textContent = '';
+  }
+
+  // Camera + QR decoding (BarcodeDetector where available, jsQR elsewhere)
+  let stream, lastCode = '', lastAt = 0, scanning = false;
+  const video = $('v'), canvas = $('c'), ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const detector = ('BarcodeDetector' in window) ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+  async function startCam() {
+    try {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
+      video.srcObject = stream; await video.play(); scanning = true; tick();
+      show('', 'وجّه الكاميرا إلى رمز QR على بطاقة المشارك', '', '');
+    } catch (e) { show('bad', 'تعذّر فتح الكاميرا', '', 'اسمح للمتصفح باستخدام الكاميرا (إعدادات الموقع)، أو استخدم البحث اليدوي'); }
+  }
+  function onCode(text) {
+    const m = /[?&](?:id|c)=([A-Za-z0-9]+)/.exec(text); const id = m ? m[1] : text.trim();
+    const now = Date.now(); if (id === lastCode && now - lastAt < 4000) return;
+    lastCode = id; lastAt = now; doCheck(id);
+  }
+  async function tick() {
+    if (!scanning) return;
+    if (video.readyState >= 2) {
+      if (detector) { try { const codes = await detector.detect(video); if (codes.length) onCode(codes[0].rawValue); } catch (e) {} }
+      else { canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0); const img = ctx.getImageData(0, 0, canvas.width, canvas.height); const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' }); if (code && code.data) onCode(code.data); }
+    }
+    setTimeout(tick, detector ? 250 : 120);
+  }
+
+  async function search() {
+    const q = $('q').value.trim(); if (!q) return;
+    if (/^HY\d{4}[A-Z]?$/i.test(q)) { doCheck(q.toUpperCase()); return; }
+    let r; try { r = await call('lookup', { q, pin }); } catch (e) { return; }
+    const list = $('list'); list.innerHTML = '';
+    if (r.status === 'pin') { askPin(); return; }
+    if (r.status !== 'ok') return;
+    if (!r.rows.length) { list.innerHTML = '<div class="item"><span>لا نتائج</span></div>'; return; }
+    r.rows.forEach(x => { const d = document.createElement('div'); d.className = 'item'; d.innerHTML = `<div><div>${x.name}</div><div class="meta">${x.platform} · ${x.id}${x.checked ? ' · دخل' : ''}</div></div>`; const b = document.createElement('button'); b.textContent = x.checked ? 'دخل' : 'تسجيل دخول'; b.onclick = () => { doCheck(x.id); list.innerHTML = ''; }; d.appendChild(b); list.appendChild(d); });
+  }
+
+  function start() { $('pinBox').classList.add('hidden'); $('app').classList.remove('hidden'); refreshStats(); startCam(); }
+  $('pinBtn').onclick = async () => {
+    pin = $('pin').value.trim();
+    let s; try { s = await call('stats', { pin }); } catch (e) { alert('لا يوجد اتصال بالإنترنت'); return; }
+    if (s.status === 'pin') { alert('الرمز غير صحيح'); return; }
+    localStorage.setItem('hy_pin', pin); start();
+  };
+  $('pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('pinBtn').click(); });
+  $('qBtn').onclick = search; $('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+  $('camBtn').onclick = startCam;
+  if (pin) start();
+})();
+</script>
+</body>
+</html>
