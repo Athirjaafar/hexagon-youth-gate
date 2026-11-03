@@ -254,7 +254,7 @@
   // ---- Backend bridge: Apps Script (google.script.run), the GitHub Pages copy (fetch to the web app), or a local mock ----
   // API_URL is filled in by build.mjs only for the GitHub Pages copy, which Instagram's in-app browser can open.
   const API_URL = 'https://script.google.com/macros/s/AKfycbw9dTfm6mjmZtgxtxWO40dBxYitRlhi_AfO31cbqCAAYOt6RBCeG1sV2Djl2jZHl-sb4A/exec';
-  const SHARE_URL = 'https://athirjaafar.github.io/hexagon-youth-gate/register/';   // the link that opens everywhere, Instagram included
+  const SHARE_URL = 'https://hexagon-youth.github.io/';   // the link that opens everywhere, Instagram included
   function call(fn, ...args) {
     return new Promise((resolve, reject) => {
       if (window.google && google.script && google.script.run) {
