@@ -82,7 +82,7 @@
   .ag-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px}
   .ag-head h2{margin:0;font-size:1.25rem;font-weight:900;color:var(--ink)}
   .ag-x{font:inherit;border:0;background:#eef2fa;color:var(--ink);width:36px;height:36px;border-radius:50%;font-size:1rem;cursor:pointer}
-  .ag-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 16px 10px;border-bottom:1px solid var(--line)}
+  .ag-tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;padding:0 16px 10px;border-bottom:1px solid var(--line)}
   .ag-tabs button{font:inherit;font-weight:800;font-size:.88rem;line-height:1.25;border:2px solid var(--line);border-radius:10px;padding:7px 4px;background:#fff;color:var(--ink);cursor:pointer}
   .ag-tabs button small{display:block;font-weight:500;font-size:.72rem;color:var(--muted)}
   .ag-tabs button[aria-selected=true]{background:var(--blue2);border-color:var(--blue2);color:#fff}
@@ -102,10 +102,6 @@
   .ag-row.brk b,.ag-row.brk .ag-t{color:#fff;background:transparent}
   .ag-row.brk .ag-t small{color:rgba(255,255,255,.8)}
   .ag-tag{display:inline-block;font-size:.72rem;font-weight:800;color:#fff;background:var(--blue2);border-radius:5px;padding:0 6px;margin-inline-end:4px}
-  .ag-plat{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:4px}
-  .ag-plat b{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--ink)}
-  .ag-plat b i{font-style:normal;flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:.8rem;background:var(--c)}
-  .ag-plat p{margin:0;font-size:.86rem;color:var(--muted);line-height:1.55}
   .ag-note{margin:0;font-size:.82rem;color:var(--muted)}
   .ag-foot{padding:10px 16px 14px;border-top:1px solid var(--line)}
   body.ag-open{overflow:hidden}
@@ -213,7 +209,6 @@
     <div class="ag-tabs" role="tablist">
       <button type="button" role="tab" data-t="d1" aria-selected="true">اليوم الأول<small>الجمعة 6</small></button>
       <button type="button" role="tab" data-t="d2" aria-selected="false">اليوم الثاني<small>السبت 7</small></button>
-      <button type="button" role="tab" data-t="pv" aria-selected="false">الجناح الرئيسي<small>طوال اليومين</small></button>
     </div>
     <div class="ag-body" id="agBody"></div>
     <div class="ag-foot"><button type="button" class="btn" id="agDone">العودة إلى التسجيل</button></div>
@@ -287,7 +282,7 @@
   const tStart = t => String(t).split('-')[0].trim(), tEnd = t => (String(t).split('-')[1] || '').trim();
   const timeHtml = t => ar(tStart(t)) + (tEnd(t) ? `<small>حتى ${ar(tEnd(t))}</small>` : '');
 
-  // ---- Programme popup: main-stage items and pavilion from the approved programme (2 Nov) ----
+  // ---- Programme popup: main-stage items from the approved programme (2 Nov) ----
   const STAGE = {
     d1: [
       ['11:00 - 11:20', 'حفل الافتتاح', 'تقديم عريف الحفل · تلاوة آيات من القرآن الكريم · النشيد الوطني · عرض فيديو عن سداسية الشباب · كلمة السيد علي نبيل الحسني، رئيس مؤسسة سفراء الخير'],
@@ -307,22 +302,11 @@
       ['14:15 - 15:00', 'الحفل الختامي', 'أضلاع سداسية الشباب · الكلمة الختامية'],
     ],
   };
-  const PAVILION = [
-    ['01', 'الوظائف والفرص', '#1E74AF', 'مساحة للفرص الوظيفية وركن لمراجعة السير الذاتية طوال اليومين، وفرص تدريب وتوظيف من كي كارد. مقابلات عمل مباشرة: الجمعة بعد الظهر · السبت ظهراً.'],
-    ['02', 'التدريب والمهارات', '#22A3DD', 'مساحة للتدريب والاستشارات في مختلف المجالات.'],
-    ['03', 'الابتكار وريادة الأعمال', '#18908E', 'مساحة لعرض المشاريع الناشئة، والتعريف بالشركات المشاركة.'],
-    ['04', 'الفنون والإبداع', '#8B2846', 'الفنان ماهر الدمشقي، ويرسم يوم السبت لوحة أمام الحضور على المسرح الرئيسي.'],
-    ['05', 'الرياضة والألعاب الإلكترونية', '#E12823', 'منصات ألعاب متاحة للجميع طوال اليومين. البطولة: التصفيات في اليوم الأول، والنهائي يوم السبت.'],
-    ['06', 'الأفكار والمجتمع', '#2B6636', 'على المسرح الرئيسي: ثلاث جلسات حوارية، وبودكاست مباشر تفاعلي يشارك فيه الحضور.'],
-  ];
   const agEl = document.getElementById('agenda'), agBody = document.getElementById('agBody');
   const agRow = ([t, title, note, kind, list]) => `<div class="ag-row ${kind || ''}"><div class="ag-t">${timeHtml(t)}</div><div><b>${escH(title)}</b>${note ? `<p>${escH(note)}</p>` : ''}${list ? `<ul>${list.map(([lt, lx]) => `<li><span>${lt}</span>${escH(lx)}</li>`).join('')}</ul>` : ''}</div></div>`;
   function agShow(tab) {
     agEl.querySelectorAll('[role=tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.t === tab));
-    agBody.innerHTML = tab === 'pv'
-      ? PAVILION.map(([n, name, c, txt]) => `<div class="ag-plat" style="--c:${c}"><b><i>${n}</i>${escH(name)}</b><p>${escH(txt)}</p></div>`).join('') +
-        `<p class="ag-note"><b>أجنحة الرعاة في منطقة الاستقبال:</b> فايبر إكس · T964 · آسياسيل · IVI</p>`
-      : `<h3>المسرح الرئيسي · ${tab === 'd1' ? 'الجمعة 6 تشرين الثاني' : 'السبت 7 تشرين الثاني'}</h3>` + STAGE[tab].map(agRow).join('');
+    agBody.innerHTML = `<h3>المسرح الرئيسي · ${tab === 'd1' ? 'الجمعة 6 تشرين الثاني' : 'السبت 7 تشرين الثاني'}</h3>` + STAGE[tab].map(agRow).join('');
     agBody.scrollTop = 0;
   }
   let agLastFocus = null;
